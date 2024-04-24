@@ -31,7 +31,7 @@ async def quote(ctx):
     avatar = Image.open(BytesIO(get_avatar.content))
     avatar_shadow = Image.open(r'avatar-shadow.png')
 
-    if len(message.attachments) >= 1:
+    if (len(message.attachments) >= 1) and (len(message.content) <= 0):
         message = message.attachments[0].filename
     else:
         if (len(message.content) >= 141) and (len(message.content) <= 160):
