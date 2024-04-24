@@ -14,9 +14,17 @@ async def on_ready():
     print('ready !')
 
 @client.command()
-async def quote(ctx):
-    message = await ctx.fetch_message(ctx.message.reference.message_id)
-    user = await client.fetch_user(message.author.id)
+async def quote(ctx, user: discord.User=None, message: str=None):
+    if ctx.message.reference is not None:
+        m_message = await ctx.fetch_message(ctx.message.reference.message_id)
+        message = m_message.content
+        user = await client.fetch_user(m_message.author.id)
+        if (len(m_message.attachments) >= 1) and (len(message) <= 0):
+            message = m_message.attachments[0].filename
+    else:
+        user = await client.fetch_user(user.id)
+        message = message
+        print(user, message)
 
     base_image = Image.new('RGB', (1024, 512), (0,0,0,0))
     w, h = base_image.size
@@ -30,19 +38,15 @@ async def quote(ctx):
     get_avatar = requests.get(user.avatar.url)
     avatar = Image.open(BytesIO(get_avatar.content))
     avatar_shadow = Image.open(r'avatar-shadow.png')
-
-    if (len(message.attachments) >= 1) and (len(message.content) <= 0):
-        message = message.attachments[0].filename
+    if (len(message) >= 141) and (len(message) <= 160):
+        qh = (h/2-8)
+    elif (len(message) >= 161) and (len(message) <= 180):
+        qh = (h/2-16)
+    elif len(message) >= 181:
+        qh = (h/2-16)
     else:
-        if (len(message.content) >= 141) and (len(message.content) <= 160):
-            qh = (h/2-8)
-        elif (len(message.content) >= 161) and (len(message.content) <= 180):
-            qh = (h/2-16)
-        elif len(message.content) >= 181:
-            qh = (h/2-16)
-        else:
-            pass
-        message = textwrap.wrap(message.content[:200], width=37)
+        pass
+        message = textwrap.wrap(message[:200], width=37)
         message = '\n'.join(message)
 
     nickname = f'- {user.display_name}'
