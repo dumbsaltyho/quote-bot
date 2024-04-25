@@ -14,7 +14,7 @@ async def on_ready():
     print('ready !')
 
 @client.command()
-async def quote(ctx, user: discord.User=None, message: str=None):
+async def quote(ctx, gradient: int = 1, user: discord.User=None, message: str=None):
     if ctx.message.reference is not None:
         m_message = await ctx.fetch_message(ctx.message.reference.message_id)
         message = m_message.content
@@ -24,11 +24,11 @@ async def quote(ctx, user: discord.User=None, message: str=None):
     else:
         user = await client.fetch_user(user.id)
         message = message
-        print(user, message)
 
     base_image = Image.new('RGB', (1024, 512), (0,0,0,0))
     w, h = base_image.size
-    qh = (h/2)
+    qh = 256
+    qw = 512
     draw = ImageDraw.Draw(base_image)
     font_message = ImageFont.truetype(r'Urbanist-Light.ttf', 24)
     font_nickname = ImageFont.truetype(r'Urbanist-BoldItalic.ttf', 18)
@@ -39,11 +39,11 @@ async def quote(ctx, user: discord.User=None, message: str=None):
     avatar = Image.open(BytesIO(get_avatar.content))
     avatar_shadow = Image.open(r'avatar-shadow.png')
     if (len(message) >= 141) and (len(message) <= 160):
-        qh = (h/2-8)
+        qh = (qh-8)
     elif (len(message) >= 161) and (len(message) <= 180):
-        qh = (h/2-16)
+        qh = (qh-16)
     elif len(message) >= 181:
-        qh = (h/2-16)
+        qh = (qh-16)
     else:
         pass
         message = textwrap.wrap(message[:200], width=37)
@@ -52,12 +52,15 @@ async def quote(ctx, user: discord.User=None, message: str=None):
     nickname = f'- {user.display_name}'
     username = f'@{user.name}'
     channel = f'#{ctx.channel.name}'
-    draw.text(((w/2+256), qh), f'"{message}"', fill="white", font=font_message, align="center", anchor='mm') 
-    draw.text(((w/2+256),(352)), nickname, fill="white", font=font_nickname, align="center", anchor='mm')
-    draw.text(((w/2+256),(376)), f'{username} in {channel}', fill="grey", font=font_username, align="center", anchor='mm')
-    draw.text(((w/2+256), 480), "reply to any text message with t.quote to make a quote", fill="white", font=font_bottom_text,align="center",anchor='mb')
+    draw.text(((qw+256), qh), message, fill="white", font=font_message, align="center", anchor='mm') 
+    draw.text(((qw+256),(352)), nickname, fill="white", font=font_nickname, align="center", anchor='mm')
+    draw.text(((qw+256),(376)), f'{username} in {channel}', fill="grey", font=font_username, align="center", anchor='mm')
+    draw.text(((qw+256), 480), "reply to any text message with t.quote to make a quote", fill="white", font=font_bottom_text,align="center",anchor='mb')
     base_image.paste(avatar.resize((512,512)), (0,0))
-    base_image.paste(avatar_shadow, (0,0), avatar_shadow)
+    if gradient == 1:
+        base_image.paste(avatar_shadow, (0,0), avatar_shadow)
+    else:
+        pass
     with BytesIO() as image_binary:
         base_image.save(image_binary, 'PNG')
         image_binary.seek(0)
