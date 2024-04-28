@@ -69,16 +69,15 @@ def generate_image(interaction, user, message: str, _uwu: bool = False):
 @app_commands.describe(user="the user to generate the quote from")
 @app_commands.describe(message="the message to generate the quote from")
 @app_commands.describe(uwu="uwuify the message?")
-async def quote(interaction: discord.Interaction, user: discord.User, message: str = "", uwu: bool = False):
+async def quote(interaction: discord.Interaction, user: discord.User, message: str, uwu: bool = False):
     gen_image = generate_image(interaction, user, message, uwu)
     
     with BytesIO() as image_binary:
         gen_image.save(image_binary, 'PNG')
         image_binary.seek(0)
         await interaction.response.send_message(file=discord.File(fp=image_binary,filename="quote.png"))
-    return
 
-@tree.context_menu(name="Quote")
+@tree.context_menu(name="Auto quote")
 async def quote_app(interaction: discord.Interaction, message: discord.Message):
     user = message.author
     
@@ -88,6 +87,22 @@ async def quote_app(interaction: discord.Interaction, message: discord.Message):
         message = message.content
     
     gen_image = generate_image(interaction, user, message)
+    
+    with BytesIO() as image_binary:
+        gen_image.save(image_binary, 'PNG')
+        image_binary.seek(0)
+        await interaction.response.send_message(file=discord.File(fp=image_binary, filename="quote.png"))
+
+@tree.context_menu(name="Auto Quote uwu")
+async def uwu_quote_app(interaction: discord.Interaction, message: discord.Message):
+    user = message.author
+    
+    if (len(message.attachments) >= 1) and (len(message.content) <= 0):
+        message = message.attachments[0].filename
+    else:
+        message = message.content
+    
+    gen_image = generate_image(interaction, user, message, True)
     
     with BytesIO() as image_binary:
         gen_image.save(image_binary, 'PNG')
