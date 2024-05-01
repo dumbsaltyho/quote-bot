@@ -1,11 +1,12 @@
 from PIL import Image, ImageFont, ImageDraw 
-import textwrap
+from imagetext_py import *
 import requests
 from io import BytesIO
 import discord
 from discord import app_commands
 from discord.ext import commands
 from uwuipy import uwuipy
+from datetime import datetime, timezone
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -27,24 +28,19 @@ def get_avatar(user):
 
     return avatar
 
-def generate_image(interaction, user, message: str, _uwu: bool = False):
-    font_message = ImageFont.truetype(r'Urbanist-Light.ttf', 24)
-    font_nickname = ImageFont.truetype(r'Urbanist-BoldItalic.ttf', 18)
-    font_username = ImageFont.truetype(r'Urbanist-ExtraLight.ttf', 16)
-    font_bottom_text = ImageFont.truetype(r'Urbanist-LightItalic.ttf', 14)
-    
-    base_image = Image.new('RGB', (1024, 512), (0,0,0,0))
-    draw = ImageDraw.Draw(base_image)
-    
-    avatar = get_avatar(user)
-    avatar_shadow = Image.open(r'avatar-shadow.png')
+def generate_image(interaction, user, message: str, _uwu: bool = False, time_since: str = "now"):
+    FontDB.SetDefaultEmojiOptions(EmojiOptions(parse_discord_emojis=True))
+    FontDB.LoadFromPath("UrbanistLight", "/home/stel/stinkymel-quote-bot/Urbanist-Light.ttf")
+    FontDB.LoadFromPath("UrbanistBoldItalic", "/home/stel/stinkymel-quote-bot/Urbanist-BoldItalic.ttf")
+    FontDB.LoadFromPath("UrbanistExtraLight", "/home/stel/stinkymel-quote-bot/Urbanist-ExtraLight.ttf")
+    font_message = FontDB.Query("UrbanistLight")
+    font_nickname = FontDB.Query("UrbanistBoldItalic")
+    font_username = FontDB.Query("UrbanistExtraLight")
 
+    message = message[:200]
     if _uwu == True:
         uwu = uwuipy(None, 0.1, 0, 0, 1, False)
         message = uwu.uwuify(message)
-
-    message = textwrap.wrap(message[:200], width=37)
-    message = '\n'.join(message)
 
     nickname = f'- {user.display_name}'
     username = f'@{user.name}'
@@ -54,16 +50,57 @@ def generate_image(interaction, user, message: str, _uwu: bool = False):
     else:
         channel = f'#{interaction.channel.name}'
 
-    text_box = draw.multiline_textbbox((0,0), message, font_message)
-    qh = (256 + ((text_box[3]) / 2) + 24)
+    cv = Canvas(1024, 512, (0,0,0,255))
+    white = Paint.Color((255, 255, 255, 255))
+    grey = Paint.Color((127, 127, 127, 255))
+    message_width, message_height = text_size_multiline(text_wrap(text = message, width = 448, size = 28, font = font_message, draw_emojis = True), size = 24, font = font_message, draw_emojis = True)
+    draw_text_wrapped(
+        canvas=cv,
+        text = message,
+        x = 768,
+        y = 256,
+        ax = 0.5, ay = 0.5,
+        size = 28,
+        width = 448,
+        font = font_message,
+        fill = white,
+        align = TextAlign.Center,
+        draw_emojis = True
+    )
+    draw_text_wrapped(
+        canvas=cv,
+        text = f"{nickname}",
+        x = 768,
+        y = (256 + (message_height / 2) + 32),
+        ax = 0.5, ay = 0.5,
+        size = 18,
+        width = 448,
+        font = font_nickname,
+        fill = white,
+        align = TextAlign.Center,
+        draw_emojis = True
+    )
+    draw_text_wrapped(
+        canvas=cv,
+        text = f"{username} in {channel}, {time_since}",
+        x = 768,
+        y = (256 + (message_height / 2) + 48),
+        ax = 0.5, ay = 0.5,
+        size = 16,
+        width = 448,
+        font = font_username,
+        fill = grey,
+        align = TextAlign.Center,
+        draw_emojis = True
+    )
 
-    draw.multiline_text(((768), 256), message, fill="white", font=font_message, align="center", anchor='mm') 
-    draw.text(((768),(qh)), nickname, fill="white", font=font_nickname, align="center", anchor='mm')
-    draw.text(((768),(qh+24)), f'{username} in {channel}', fill="grey", font=font_username, align="center", anchor='mm')
-    base_image.paste(avatar.resize((512,512)), (0,0))
-    base_image.paste(avatar_shadow, (0,0), avatar_shadow)
+    im: Image.Image = cv.to_image()
+    avatar = get_avatar(user)
+    avatar_shadow = Image.open(r'avatar-shadow.png')
+    im.paste(avatar.resize((512,512)), (0,0))
+    im.paste(avatar_shadow, (0,0), avatar_shadow)
 
-    return base_image
+    return im
 
 @tree.command(name="quote", description="generate a quote from a reply, or with options!")
 @app_commands.describe(user="the user to generate the quote from")
@@ -77,16 +114,23 @@ async def quote(interaction: discord.Interaction, user: discord.User, message: s
         image_binary.seek(0)
         await interaction.response.send_message(file=discord.File(fp=image_binary,filename="quote.png"))
 
-@tree.context_menu(name="Auto quote")
-async def quote_app(interaction: discord.Interaction, message: discord.Message):
+def app_base(interaction, message, uwu):
     user = message.author
+    delta =  datetime.now(timezone.utc) - message.created_at
+    time_since = f'{delta.days} days ago'
     
     if (len(message.attachments) >= 1) and (len(message.content) <= 0):
         message = message.attachments[0].filename
     else:
         message = message.content
     
-    gen_image = generate_image(interaction, user, message)
+    gen_image = generate_image(interaction, user, message, uwu, time_since)
+
+    return gen_image
+
+@tree.context_menu(name="Auto quote")
+async def quote_app(interaction: discord.Interaction, message: discord.Message):
+    gen_image = app_base(interaction, message, False)
     
     with BytesIO() as image_binary:
         gen_image.save(image_binary, 'PNG')
@@ -95,24 +139,11 @@ async def quote_app(interaction: discord.Interaction, message: discord.Message):
 
 @tree.context_menu(name="Auto Quote uwu")
 async def uwu_quote_app(interaction: discord.Interaction, message: discord.Message):
-    user = message.author
-    
-    if (len(message.attachments) >= 1) and (len(message.content) <= 0):
-        message = message.attachments[0].filename
-    else:
-        message = message.content
-    
-    gen_image = generate_image(interaction, user, message, True)
+    gen_image = app_base(interaction, message, True)
     
     with BytesIO() as image_binary:
         gen_image.save(image_binary, 'PNG')
         image_binary.seek(0)
         await interaction.response.send_message(file=discord.File(fp=image_binary, filename="quote.png"))
-
-@tree.command()
-@commands.is_owner()
-async def goodbye(interaction: discord.Interaction):
-    await interaction.response.send_message("shutting down, see u soon !")
-    await client.close()
 
 client.run("token")
