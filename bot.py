@@ -1,5 +1,4 @@
 from PIL import Image, ImageFont, ImageDraw 
-from imagetext_py import *
 import requests
 from io import BytesIO
 import discord
@@ -7,6 +6,8 @@ from discord import app_commands
 from discord.ext import commands
 from uwuipy import uwuipy
 from datetime import datetime, timezone
+from imagetext_py import *
+import random
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -21,21 +22,19 @@ async def on_ready():
 
 def get_avatar(user):
     try:
-        get_avatar = requests.get(user.avatar.url)
-    except AttributeError:
-        get_avatar = requests.get("https://cdn.discordapp.com/embed/avatars/0.png")
+        get_avatar = requests.get(user.avatar)
+    except requests.exceptions.MissingSchema:
+        av_number = random.randrange(0, 6)
+        get_avatar = requests.get(f"https://cdn.discordapp.com/embed/avatars/{av_number}.png")
     avatar = Image.open(BytesIO(get_avatar.content))
-
     return avatar
 
 def generate_image(interaction, user, message: str, _uwu: bool = False, time_since: str = "now"):
     FontDB.SetDefaultEmojiOptions(EmojiOptions(parse_discord_emojis=True))
-    FontDB.LoadFromPath("UrbanistLight", "/home/stel/stinkymel-quote-bot/Urbanist-Light.ttf")
-    FontDB.LoadFromPath("UrbanistBoldItalic", "/home/stel/stinkymel-quote-bot/Urbanist-BoldItalic.ttf")
-    FontDB.LoadFromPath("UrbanistExtraLight", "/home/stel/stinkymel-quote-bot/Urbanist-ExtraLight.ttf")
-    font_message = FontDB.Query("UrbanistLight")
-    font_nickname = FontDB.Query("UrbanistBoldItalic")
-    font_username = FontDB.Query("UrbanistExtraLight")
+    FontDB.LoadFromPath("Light", "./Roboto-Light.ttf")
+    FontDB.LoadFromPath("BoldItalic", "./Roboto-BoldItalic.ttf")
+    font_light = FontDB.Query("Light")
+    font_bold_italic = FontDB.Query("BoldItalic")
 
     message = message[:200]
     if _uwu == True:
@@ -53,16 +52,20 @@ def generate_image(interaction, user, message: str, _uwu: bool = False, time_sin
     cv = Canvas(1024, 512, (0,0,0,255))
     white = Paint.Color((255, 255, 255, 255))
     grey = Paint.Color((127, 127, 127, 255))
-    message_width, message_height = text_size_multiline(text_wrap(text = message, width = 448, size = 28, font = font_message, draw_emojis = True), size = 24, font = font_message, draw_emojis = True)
+    message_font_size = 31
+    m_width = 460
+    x_pos = 752
+    y_pos = 240
+    message_width, message_height = text_size_multiline(text_wrap(text = message, width = m_width, size = message_font_size, font = font_light, draw_emojis = True), size = message_font_size, font = font_light, draw_emojis = True)
     draw_text_wrapped(
         canvas=cv,
         text = message,
-        x = 768,
-        y = 256,
+        x = x_pos,
+        y = y_pos,
         ax = 0.5, ay = 0.5,
-        size = 28,
-        width = 448,
-        font = font_message,
+        size = message_font_size,
+        width = m_width,
+        font = font_light,
         fill = white,
         align = TextAlign.Center,
         draw_emojis = True
@@ -70,12 +73,12 @@ def generate_image(interaction, user, message: str, _uwu: bool = False, time_sin
     draw_text_wrapped(
         canvas=cv,
         text = f"{nickname}",
-        x = 768,
-        y = (256 + (message_height / 2) + 32),
+        x = x_pos,
+        y = (y_pos + (message_height / 2) + 32),
         ax = 0.5, ay = 0.5,
-        size = 18,
-        width = 448,
-        font = font_nickname,
+        size = 21,
+        width = m_width,
+        font = font_bold_italic,
         fill = white,
         align = TextAlign.Center,
         draw_emojis = True
@@ -83,12 +86,12 @@ def generate_image(interaction, user, message: str, _uwu: bool = False, time_sin
     draw_text_wrapped(
         canvas=cv,
         text = f"{username} in {channel}, {time_since}",
-        x = 768,
-        y = (256 + (message_height / 2) + 48),
+        x = x_pos,
+        y = (y_pos + (message_height / 2) + 56),
         ax = 0.5, ay = 0.5,
-        size = 16,
-        width = 448,
-        font = font_username,
+        size = 19,
+        width = m_width,
+        font = font_light,
         fill = grey,
         align = TextAlign.Center,
         draw_emojis = True
