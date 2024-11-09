@@ -4,10 +4,11 @@ from io import BytesIO
 import discord
 from discord import app_commands
 from discord.ext import commands
-from uwuipy import uwuipy
+from uwuipy import Uwuipy
 from datetime import datetime, timezone
 from imagetext_py import *
 import random
+import d_token
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -38,14 +39,14 @@ def generate_image(interaction, user, message: str, _uwu: bool = False, time_sin
 
     message = message[:200]
     if _uwu == True:
-        uwu = uwuipy(None, 0.1, 0, 0, 1, False)
+        uwu = Uwuipy(None, 0.1, 0, 0, 1, False)
         message = uwu.uwuify(message)
 
     nickname = f'- {user.display_name}'
     username = f'@{user.name}'
 
     if isinstance(interaction.channel, discord.DMChannel):
-        channel = '#wouldn\'t you like to know, weather boy?'
+        channel = 'direct messages'
     else:
         channel = f'#{interaction.channel.name}'
 
@@ -105,6 +106,8 @@ def generate_image(interaction, user, message: str, _uwu: bool = False, time_sin
 
     return im
 
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 @tree.command(name="quote", description="generate a quote from a reply, or with options!")
 @app_commands.describe(user="the user to generate the quote from")
 @app_commands.describe(message="the message to generate the quote from")
@@ -120,7 +123,12 @@ async def quote(interaction: discord.Interaction, user: discord.User, message: s
 def app_base(interaction, message, uwu):
     user = message.author
     delta =  datetime.now(timezone.utc) - message.created_at
-    time_since = f'{delta.days} days ago'
+    if delta.days == 1:
+        time_since = f'{delta.days} day ago'
+    elif delta.days <= 1:
+        time_since = f'less than 1 day ago'
+    else:
+        time_since = f'{delta.days} days ago'
     
     if (len(message.attachments) >= 1) and (len(message.content) <= 0):
         message = message.attachments[0].filename
@@ -131,6 +139,8 @@ def app_base(interaction, message, uwu):
 
     return gen_image
 
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 @tree.context_menu(name="Auto quote")
 async def quote_app(interaction: discord.Interaction, message: discord.Message):
     gen_image = app_base(interaction, message, False)
@@ -140,6 +150,8 @@ async def quote_app(interaction: discord.Interaction, message: discord.Message):
         image_binary.seek(0)
         await interaction.response.send_message(file=discord.File(fp=image_binary, filename="quote.png"))
 
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 @tree.context_menu(name="Auto Quote uwu")
 async def uwu_quote_app(interaction: discord.Interaction, message: discord.Message):
     gen_image = app_base(interaction, message, True)
@@ -149,4 +161,4 @@ async def uwu_quote_app(interaction: discord.Interaction, message: discord.Messa
         image_binary.seek(0)
         await interaction.response.send_message(file=discord.File(fp=image_binary, filename="quote.png"))
 
-client.run("token")
+client.run(token)
